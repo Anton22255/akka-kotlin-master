@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/BlockChain/BlockChain.iml" filepath="$PROJECT_DIR$/BlockChain/BlockChain.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/akka-kotlin-master.iml" filepath="$PROJECT_DIR$/.idea/modules/akka-kotlin-master.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/akka-kotlin-master_main.iml" filepath="$PROJECT_DIR$/.idea/modules/akka-kotlin-master_main.iml" group="akka-kotlin-master" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/akka-kotlin-master_test.iml" filepath="$PROJECT_DIR$/.idea/modules/akka-kotlin-master_test.iml" group="akka-kotlin-master" />
+    </modules>
+  </component>
+</project>
