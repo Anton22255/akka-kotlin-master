@@ -8,7 +8,7 @@ import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 
 const val isAllLogPrinting = false
-const val isAllLogFilePrinting = true
+const val isAllLogFilePrinting = false
 @Throws(IOException::class)
 fun appendToLogs(text: String) {
 

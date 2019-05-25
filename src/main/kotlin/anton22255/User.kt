@@ -10,11 +10,16 @@ import java.security.*
 import java.util.*
 import ru.anton22255.Main.startNonce
 import ru.anton22255.utils.appendToLogs
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.collections.ArrayList
 
 class User(val name: String?) : AbstractActor() {
 
     val transactions: ArrayList<Transaction>
+    val transactionPool: ArrayList<Transaction>
     val ledger: Ledger
+    var countOfForks: Int = 0
     private var privateKey: PrivateKey? = null
     var publicKeyDSA: PublicKey? = null
         private set
@@ -31,10 +36,17 @@ class User(val name: String?) : AbstractActor() {
                 .build();
     }
 
+    override fun postStop() {
+        super.postStop()
+
+        println("$name $countOfForks ${ledger.blocks.size}")
+    }
+
     init {
         this.transactions = ArrayList()
         this.ledger = Ledger()
         this.cache = ArrayList()
+        this.transactionPool = ArrayList()
         generateKeys()
         initCache(5)
 
@@ -300,7 +312,9 @@ class User(val name: String?) : AbstractActor() {
             if (proposedBlock.prevBlock == current_last) {
                 current_cache.add(proposedBlock)
             } else {
-                Main.incrementForkCount()
+//                Main.incrementForkCount()
+                countOfForks++
+                println("FORK $countOfForks")
             }
 
             // TODO: 21/04/2019 fork event

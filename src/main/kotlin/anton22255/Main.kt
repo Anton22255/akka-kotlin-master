@@ -69,7 +69,7 @@ object Main {
     fun sendTransactions() {
 
         val setSize = usersList.size
-        val senders = 1000//randomInt(1, 10)
+        val senders = 100000//randomInt(1, 10)
         for (i in 0 until senders) {
             val randInt = randomInt(0, setSize - 1)
             val user = usersList[randInt]
@@ -123,10 +123,10 @@ object Main {
         nameOfTest = graphType.name + Date().toString()
 
         val actorSystem = ActorSystem.create("part3", ConfigFactory.parseResources("part3.conf"))
-        val peers = graphMapper(generateGraph(10, nameOfTest, graphType), actorSystem)
+        val peers = graphMapper(generateGraph(15, nameOfTest, graphType), actorSystem)
         val runPhaseOfExperiment = runPhaseOfExperiment(it, peers)
 //        Thread.sleep(1000)
-        TimeUnit.MINUTES.sleep(1)
+        TimeUnit.SECONDS.sleep(3*60)
         print("Kill all")
 //        actorSystem.deadLetters()
 
