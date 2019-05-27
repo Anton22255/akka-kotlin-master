@@ -3,6 +3,7 @@ package ru.anton22255
 import akka.actor.AbstractActor
 import akka.actor.ActorRef
 import anton22255.Peers
+import anton22255.UserStatistic
 import anton22255.cipher.CipherHelpers
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -14,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.collections.ArrayList
 
-class User(val name: String?) : AbstractActor() {
+class User(val name: String) : AbstractActor() {
 
     val transactions: ArrayList<Transaction>
     val transactionPool: ArrayList<Transaction>
@@ -40,6 +41,7 @@ class User(val name: String?) : AbstractActor() {
         super.postStop()
 
         println("$name $countOfForks ${ledger.blocks.size}")
+        Main.statistics.add(UserStatistic(name ?: "", countOfForks, ledger.blocks.size))
     }
 
     init {
@@ -184,7 +186,8 @@ class User(val name: String?) : AbstractActor() {
             transactions.add(transaction)
 
             if (transactions.size.toLong() == ledger.blocksize) {
-                createBlock()
+                createBlock(ArrayList(transactions))
+                transactions.clear()
                 appendToLogs("User $name created a block and appended it to the ledger")
             }
 
@@ -200,13 +203,6 @@ class User(val name: String?) : AbstractActor() {
         }
     }
 
-    @Throws(NoSuchAlgorithmException::class)
-    fun generateNonce(): String {
-        val dateTimeNameString = java.lang.Long.toString(Date().time) + name!! //in-order to be very unique and assured not in ledger
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hash = digest.digest(dateTimeNameString.toByteArray(StandardCharsets.UTF_8))
-        return Base64.getEncoder().encodeToString(hash)
-    }
 
     @Throws(NoSuchAlgorithmException::class)
     fun generateHash(nonce: String): String {
@@ -275,8 +271,9 @@ class User(val name: String?) : AbstractActor() {
         try {
             var isContainsNonce = false
             var nonce: String
+            val random = Random()
             do {
-                nonce = generateNonce()
+                nonce = generateNonce(random)
                 isContainsNonce = ledger.containsNonce(nonce)
             } while (isContainsNonce || !nonce.startsWith(startNonce))// Make sure the nonce starts with 00 and not in ledger before (puzzle)
             val hash = generateHash(nonce)
@@ -377,6 +374,12 @@ class User(val name: String?) : AbstractActor() {
         // Verify that the hashing of block is consistent with the contents of the block first, if not it will be ignored
 //        if (verifyBlockHash(proposedBlock)!!)
 //        {
+
+        if (proposedBlock.prevHash != ledger.lastBlock().hash) {
+            countOfForks++
+//            println("FORK")
+        }
+
         appendToLogs(name!! + " : Sucessfully verified the recieved block")
         // Users do not vote for blocks they proposed
         if (proposerName == name) {
@@ -395,7 +398,7 @@ class User(val name: String?) : AbstractActor() {
             // All peers -except the proposer- voted for the block
             if (proposedBlock.confirmations > proposedBlock.rejections) {
                 appendToLogs(proposerName + " : My block is accepted")
-                proposedBlock.proposer.transactions.clear()
+//                proposedBlock.proposer.transactions.clear()
 
                 // Update all peers to include the accepted block
 //                    Main.updateMainLedger(proposedBlock)
@@ -457,10 +460,10 @@ class User(val name: String?) : AbstractActor() {
 
     companion object {
 
-        fun generateRandomString(length: Long): String {
+        fun generateRandomString(length: Long, rnd: Random = Random()): String {
             val SALTCHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
             val salt = StringBuilder()
-            val rnd = Random()
+//            val rnd = Random()
             while (salt.length < length) {
                 val index = (rnd.nextFloat() * SALTCHARS.length).toInt()
                 salt.append(SALTCHARS[index])
@@ -468,5 +471,27 @@ class User(val name: String?) : AbstractActor() {
 
             return salt.toString()
         }
+
+
+        @Throws(NoSuchAlgorithmException::class)
+        fun generateNonce(): String {
+
+            val dateTimeNameString = java.lang.Long.toString(Date().time) //+ name //in-order to be very unique and assured not in ledger
+            val digest = MessageDigest.getInstance("SHA-256")
+            val hash = digest.digest(dateTimeNameString.toByteArray(StandardCharsets.UTF_8))
+            return Base64.getEncoder().encodeToString(hash)
+        }
+
+        @Throws(NoSuchAlgorithmException::class)
+        fun generateNonce(random: Random): String {
+
+            val dateTimeNameString = generateRandomString(15, random)
+//                    Date().time) //+ name //in-order to be very unique and assured not in ledger
+            val digest = MessageDigest.getInstance("SHA-256")
+            val hash = digest.digest(dateTimeNameString.toByteArray(StandardCharsets.UTF_8))
+            return Base64.getEncoder().encodeToString(hash)
+        }
+
     }
+
 }

@@ -4,7 +4,6 @@ package ru.anton22255
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
-import jdk.nashorn.internal.runtime.regexp.joni.Config.log
 import ru.anton22255.utils.appendToFinalLogs
 import ru.anton22255.utils.appendToLogs
 import java.io.File
@@ -12,12 +11,22 @@ import java.io.FileNotFoundException
 import java.io.PrintWriter
 import java.util.*
 import java.util.concurrent.TimeUnit
+import anton22255.UserStatistic
+import anton22255.utils.transitionOfHueRange
+import org.graphstream.graph.Node
+import org.graphstream.graph.implementations.SingleGraph
+import scala.concurrent.Await
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.collections.ArrayList
+
 
 object Main {
     //    lateinit var networkGraph: Hashtable<String, ArrayList<User>>
     lateinit var usersList: ArrayList<ActorRef>
     lateinit var mainLedger: Ledger
     var usersCount: Int = 0
+
+    var statistics: CopyOnWriteArrayList<UserStatistic> = CopyOnWriteArrayList()
 
     var nameOfTest = "test"
 
@@ -69,7 +78,7 @@ object Main {
     fun sendTransactions() {
 
         val setSize = usersList.size
-        val senders = 100000//randomInt(1, 10)
+        val senders = 1_000_000//randomInt(1, 10)
         for (i in 0 until senders) {
             val randInt = randomInt(0, setSize - 1)
             val user = usersList[randInt]
@@ -123,20 +132,80 @@ object Main {
         nameOfTest = graphType.name + Date().toString()
 
         val actorSystem = ActorSystem.create("part3", ConfigFactory.parseResources("part3.conf"))
-        val peers = graphMapper(generateGraph(15, nameOfTest, graphType), actorSystem)
+        val graph = generateGraph(999, nameOfTest, graphType)
+        val peers = graphMapper(graph, actorSystem)
         val runPhaseOfExperiment = runPhaseOfExperiment(it, peers)
 //        Thread.sleep(1000)
-        TimeUnit.SECONDS.sleep(3*60)
-        print("Kill all")
+
+        TimeUnit.SECONDS.sleep(5 * 60)
+
+//        getUserInfo()
+
+//        while (statistics.size < peers.size) {
+//            println("try again ${statistics.size}")
+//            TimeUnit.SECONDS.sleep(1)
+//        }
+
+
+//        val futures = peers.map {
+//            ask(it, object : User.Command() {
+//                override fun run(user: User) {
+//                    print("${user.name} ${user.ledger.blocks.size}  ${user.transactions.size} ${user.countOfForks},")
+//                }
+//            }, 1000)
+//
+//
+//        }?.toSet()
+//
+//        Futures.fold()
+
+//        CompletableFuture.allOf(futures)
+
+        println("Kill all")
 //        actorSystem.deadLetters()
 
         //shutdown the actor system
         printMessage("stop actor system")
 
-        getUserInfo()
-        actorSystem.terminate()
+//        getUserInfo()
+        val terminate = actorSystem.terminate()
+        Await.result(terminate, scala.concurrent.duration.Duration.Inf())
+        println("dd $statistics")
+
+        val statisticsNew = statistics.toList().sortedBy { it -> it.name.toInt() }
+
+        printGraphAtt(statisticsNew, graph, { userStatistic -> userStatistic.lagerSize }, "lager ")
+        printGraphAtt(statisticsNew, graph, { userStatistic -> userStatistic.forkCount }, "fork ")
         return runPhaseOfExperiment
     }
+
+    fun printGraphAtt(statisticsNew: List<UserStatistic>, graph: SingleGraph, func: (UserStatistic) -> Int, name: String) {
+
+        val maxBy = func(statisticsNew.maxBy { func(it) } ?: UserStatistic("d", 1, 1))
+
+        graph.getEachNode<Node>().forEachIndexed { index, node ->
+            val userStatistic = statisticsNew.get(index)
+            node.addAttribute("ui.label", index.toString() + " " + func(userStatistic))
+            val color = transitionOfHueRange(func(userStatistic).toDouble().div(maxBy), 120, 0)
+
+            node.addAttribute("ui.style", "fill-color:  " +
+                    "rgb(${color.red}," +
+                    "${color.green}," +
+                    "${color.blue});");
+
+//            node.addAttribute("ui.fill-color", "${color.rgb}");
+//            node.setAttribute("ui.color", color )
+
+//            actorSystem.actorOf(Props.create(User::class.java, it.id), it.id))
+        }
+//        graph.getEachNode<Node>()
+//                .forEach { }
+
+        printGraph(graph, name + Date())
+
+    }
+
+    private fun getLagerSize(userStatistic: UserStatistic) = userStatistic.lagerSize
 
     private fun printMessage(message: String) {
         appendToFinalLogs(message)
@@ -177,6 +246,11 @@ object Main {
         usersList.map { user ->
             user.tell(object : User.Command() {
                 override fun run(user: User) {
+                    statistics.add(UserStatistic(
+                            user.name ?: "",
+                            user.countOfForks,
+                            user.countOfForks))
+
                     print("${user.name} ${user.ledger.blocks.size}  ${user.transactions.size},")
                     res.append("${user.name} ${user.ledger.blocks.size}")
                 }

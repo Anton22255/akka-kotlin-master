@@ -51,8 +51,6 @@ class GraphVisualisation {
 
 fun generateGraph(count: Int, name: String, type: GraphType? = null): SingleGraph {
     val graph = SingleGraph("Barabasi-Albert")
-    val pic = FileSinkImages(FileSinkImages.OutputType.JPG, Resolutions.HD1080)
-    pic.setLayoutPolicy(FileSinkImages.LayoutPolicy.COMPUTED_FULLY_AT_NEW_IMAGE);
     // Between 1 and 3 new links per node added.
     val gen = type?.createGenerator() ?: DorogovtsevMendesGenerator();
     // Generate 100 nodes:
@@ -66,9 +64,15 @@ fun generateGraph(count: Int, name: String, type: GraphType? = null): SingleGrap
     gen.end()
     //        graph.display()
 
-    pic.writeAll(graph, "./graph/sample_${name}.png");
+    printGraph(graph, name)
 
     return graph
+}
+
+fun printGraph(graph: SingleGraph, name: String) {
+    val pic = FileSinkImages(FileSinkImages.OutputType.JPG, Resolutions.UHD_4K)
+    pic.setLayoutPolicy(FileSinkImages.LayoutPolicy.COMPUTED_FULLY_AT_NEW_IMAGE);
+    pic.writeAll(graph, "./graph/sample_${name}.png");
 }
 
 
